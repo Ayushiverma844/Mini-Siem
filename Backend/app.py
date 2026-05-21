@@ -71,16 +71,36 @@ def predict_log():
     data = request.json
 
     input_data = pd.DataFrame([{
-        'network_packet_size': data['network_packet_size'],
-        'protocol_type': data['protocol_type'],
-        'login_attempts': data['login_attempts'],
-        'session_duration': data['session_duration'],
-        'encryption_used': data['encryption_used'],
-        'ip_reputation_score': data['ip_reputation_score'],
-        'failed_logins': data['failed_logins'],
-        'browser_type': data['browser_type'],
-        'unusual_time_access': data['unusual_time_access']
-    }])
+    'network_packet_size': data['network_packet_size'],
+
+    'protocol_type':
+    protocol_encoder.transform(
+        [data['protocol_type']]
+    )[0],
+
+    'login_attempts': data['login_attempts'],
+
+    'session_duration': data['session_duration'],
+
+    'encryption_used':
+    encryption_encoder.transform(
+        [data['encryption_used']]
+    )[0],
+
+    'ip_reputation_score':
+    data['ip_reputation_score'],
+
+    'failed_logins':
+    data['failed_logins'],
+
+    'browser_type':
+    browser_encoder.transform(
+        [data['browser_type']]
+    )[0],
+
+    'unusual_time_access':
+    data['unusual_time_access']
+}])
 
     prediction = log_model.predict(input_data)
 
