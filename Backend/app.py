@@ -2,13 +2,29 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import joblib
 import pandas as pd
+import os
+from werkzeug.utils import secure_filename
 
 # ==========================
 # CREATE FLASK APP
 # ==========================
 app = Flask(__name__)
 CORS(app)
+# ==========================
+# SECURITY CONFIG
+# ==========================
 
+ALLOWED_EXTENSIONS = {
+    'csv',
+    'log',
+    'txt'
+}
+
+MAX_FILE_SIZE = 2 * 1024 * 1024  # 2MB
+
+app.config[
+    'MAX_CONTENT_LENGTH'
+] = MAX_FILE_SIZE
 
 # ==========================
 # LOAD MODELS
@@ -27,7 +43,18 @@ protocol_encoder = joblib.load("protocol_encoder.pkl")
 encryption_encoder = joblib.load("encryption_encoder.pkl")
 browser_encoder = joblib.load("browser_encoder.pkl")
 
+# ==========================
+# FILE VALIDATION
+# ==========================
+def allowed_file(filename):
 
+    return (
+        '.' in filename
+        and filename.rsplit(
+            '.', 1
+        )[1].lower()
+        in ALLOWED_EXTENSIONS
+    )
 # ==========================
 # HOME ROUTE
 # ==========================
@@ -114,3 +141,198 @@ def predict_log():
 # ==========================
 if __name__ == '__main__':
     app.run(debug=True)
+
+# ==========================
+# SECURE LOG FILE UPLOAD API
+# ==========================
+@app.route(
+    '/upload-log-file',
+    methods=['POST']
+)
+def upload_log_file():
+
+    # file check
+    if 'file' not in request.files:
+        return jsonify({
+            "error":
+            "No file uploaded"
+        }), 400
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({
+            "error":
+            "No selected file"
+        }), 400
+
+    # extension validation
+    if not allowed_file(
+        file.filename
+    ):
+        return jsonify({
+            "error":
+            "Only .csv, .log, .txt allowed"
+        }), 400
+
+    try:
+
+        # sanitize filename
+        filename = secure_filename(
+            file.filename
+        )
+
+        # ======================
+        # CSV FILE
+        # ======================
+        if filename.endswith(
+            '.csv'
+        ):
+
+            df = pd.read_csv(file)
+
+        # ======================
+        # TXT / LOG FILE
+        # ======================
+        else:
+
+            lines = file.read() \
+                .decode(
+                    'utf-8',
+                    errors='ignore'
+                ) \
+                .splitlines()
+
+            parsed_logs = []
+
+            for line in lines:
+
+                parts = line.split(',')
+
+                if len(parts) < 9:
+                    continue
+
+                parsed_logs.append({
+                    'network_packet_size':
+                    float(parts[0]),
+
+                    'protocol_type':
+                    parts[1],
+
+                    'login_attempts':
+                    int(parts[2]),
+
+                    'session_duration':
+                    float(parts[3]),
+
+                    'encryption_used':
+                    parts[4],
+
+                    'ip_reputation_score':
+                    float(parts[5]),
+
+                    'failed_logins':
+                    int(parts[6]),
+
+                    'browser_type':
+                    parts[7],
+
+                    'unusual_time_access':
+                    int(parts[8])
+                })
+
+            df = pd.DataFrame(
+                parsed_logs
+            )
+
+        # ======================
+        # REQUIRED COLUMNS
+        # ======================
+        required_columns = [
+            'network_packet_size',
+            'protocol_type',
+            'login_attempts',
+            'session_duration',
+            'encryption_used',
+            'ip_reputation_score',
+            'failed_logins',
+            'browser_type',
+            'unusual_time_access'
+        ]
+
+        missing_columns = [
+            col
+            for col
+            in required_columns
+            if col not in df.columns
+        ]
+
+        if missing_columns:
+            return jsonify({
+                "error":
+                f"Missing columns: {missing_columns}"
+            }), 400
+
+        # ======================
+        # ENCODING
+        # ======================
+        df[
+            'protocol_type'
+        ] = protocol_encoder.transform(
+            df[
+                'protocol_type'
+            ]
+        )
+
+        df[
+            'encryption_used'
+        ] = encryption_encoder.transform(
+            df[
+                'encryption_used'
+            ]
+        )
+
+        df[
+            'browser_type'
+        ] = browser_encoder.transform(
+            df[
+                'browser_type'
+            ]
+        )
+
+        # ======================
+        # PREDICTION
+        # ======================
+        predictions = (
+            log_model.predict(df)
+        )
+
+        threat_count = int(
+            sum(predictions)
+        )
+
+        safe_count = int(
+            len(predictions)
+            - threat_count
+        )
+
+        return jsonify({
+
+            "total_logs":
+            len(predictions),
+
+            "threats_detected":
+            threat_count,
+
+            "safe_logs":
+            safe_count,
+
+            "results":
+            predictions.tolist()
+        })
+
+    except Exception as e:
+
+        return jsonify({
+            "error": str(e)
+        }), 500
