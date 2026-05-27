@@ -1,0 +1,157 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================
+   GLOBAL STYLES
+========================= */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Inter, system-ui, Arial, sans-serif;
+  background-color: #020817;
+  color: white;
+  overflow-x: hidden;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* =========================
+   CUSTOM SCROLLBAR
+========================= */
+
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #020817;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #0ea5e9;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #22d3ee;
+}
+
+/* =========================
+   CYBER GRID BACKGROUND SUPPORT
+   (used in Dashboard.jsx)
+========================= */
+
+.grid-bg {
+  background-image: linear-gradient(
+      rgba(0, 255, 255, 0.05) 1px,
+      transparent 1px
+    ),
+    linear-gradient(90deg, rgba(0, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+/* =========================
+   GLOW EFFECT UTILITIES
+========================= */
+
+.glow-cyan {
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.3),
+    0 0 60px rgba(34, 211, 238, 0.2);
+}
+
+.glow-hover:hover {
+  box-shadow: 0 0 25px rgba(34, 211, 238, 0.4),
+    0 0 80px rgba(34, 211, 238, 0.25);
+  transition: 0.3s ease-in-out;
+}
+
+/* =========================
+   CARD ANIMATION
+========================= */
+
+.card-animate {
+  transition: all 0.3s ease;
+}
+
+.card-animate:hover {
+  transform: translateY(-4px);
+}
+
+/* =========================
+   TEXT SELECTION COLOR
+========================= */
+
+::selection {
+  background-color: rgba(34, 211, 238, 0.3);
+  color: white;
+}
+
+/* =========================
+   ADVANCED CYBER ANIMATIONS
+========================= */
+
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spinReverse {
+  from {
+    transform: rotate(360deg);
+  }
+
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spinSlow 10s linear infinite;
+}
+
+.animate-spin-reverse {
+  animation: spinReverse 18s linear infinite;
+}
+
+/* Scanner Sweep Effect */
+
+.scanner-beam {
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: linear-gradient(
+    to top,
+    transparent,
+    rgba(34, 211, 238, 0.18)
+  );
+  clip-path: polygon(
+    50% 50%,
+    100% 0%,
+    100% 100%
+  );
+  animation: scannerRotate 4s linear infinite;
+}
+
+@keyframes scannerRotate {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+

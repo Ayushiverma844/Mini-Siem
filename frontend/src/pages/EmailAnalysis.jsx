@@ -1,0 +1,280 @@
+import { useState, useEffect, useRef } from "react";
+import NavigationBar from "../components/NavigationBar";
+import axios from "axios";
+
+const EmailAnalysis = () => {
+  const [emailText, setEmailText] = useState("");
+  const [emailFile, setEmailFile] = useState(null);
+
+  const [showResult, setShowResult] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  const [logs, setLogs] = useState([]);
+  const terminalRef = useRef(null);
+
+  // prediction result from ML model
+  const [result, setResult] = useState(null);
+
+  const allowedEmailExtensions = [".txt", ".eml"];
+  const allowedEmailMimeTypes = [
+    "text/plain",
+    "message/rfc822",
+  ];
+
+  const terminalMessages = [
+    "[SYSTEM] Initializing email forensic engine...",
+    "[SCAN] Extracting email content...",
+    "[SCAN] Running phishing classification model...",
+    "[SCAN] Detecting malicious patterns...",
+    "[SCAN] Threat intelligence matching...",
+    "[FINAL] Generating security report..."
+  ];
+
+  // File Upload
+  const handleEmailFileChange = async (e) => {
+    const file = e.target.files[0];
+
+    if (!file) return;
+
+    const extension =
+      "." +
+      file.name.split(".").pop().toLowerCase();
+
+    const isValidExtension =
+      allowedEmailExtensions.includes(extension);
+
+    const isValidMime =
+      allowedEmailMimeTypes.includes(file.type) ||
+      file.type === "";
+
+    const isValidSize =
+      file.size <= 5 * 1024 * 1024;
+
+    if (!isValidExtension || !isValidMime) {
+      alert(
+        "Only .txt and .eml files are allowed"
+      );
+      e.target.value = "";
+      return;
+    }
+
+    if (!isValidSize) {
+      alert(
+        "File size must be under 5MB"
+      );
+      e.target.value = "";
+      return;
+    }
+
+    setEmailFile(file);
+
+    // Read file content
+    const text = await file.text();
+    setEmailText(text);
+  };
+
+  // Analyze
+  const handleAnalyze = async () => {
+    if (!emailText.trim()) {
+      alert(
+        "Please enter email content or upload file"
+      );
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setShowResult(false);
+    setLogs([]);
+    setResult(null);
+
+    // fake terminal logs
+    for (let i = 0; i < terminalMessages.length; i++) {
+      setTimeout(() => {
+        setLogs((prev) => [
+          ...prev,
+          terminalMessages[i]
+        ]);
+      }, i * 700);
+    }
+
+    try {
+      // API CALL TO FLASK
+      const response = await axios.post(
+        "http://127.0.0.1:5000/predict-phishing",
+        {
+          email_text: emailText,
+        }
+      );
+
+      // save ML output
+      setResult(response.data);
+
+      setTimeout(() => {
+        setIsAnalyzing(false);
+        setShowResult(true);
+      }, 4200);
+    } catch (error) {
+      console.error(error);
+
+      alert(
+        "Backend connection failed"
+      );
+
+      setIsAnalyzing(false);
+    }
+  };
+
+  // auto scroll terminal
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.scrollTop =
+        terminalRef.current.scrollHeight;
+    }
+  }, [logs]);
+
+  return (
+    <div className="min-h-screen bg-[#020817] text-white relative overflow-hidden">
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(0,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,255,0.03)_1px,transparent_1px)] bg-[size:50px_50px]" />
+
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[700px] h-[500px] bg-cyan-500/10 blur-[150px] rounded-full"></div>
+
+      <div className="relative z-10 px-8">
+        <NavigationBar />
+
+        {/* Header */}
+        <div className="mt-14">
+          <p className="uppercase tracking-[5px] text-cyan-400 text-sm mb-5">
+            Threat Analysis Workspace
+          </p>
+
+          <h1 className="text-6xl font-bold">
+            Email Threat Intelligence
+          </h1>
+
+          <p className="text-gray-400 mt-5 max-w-3xl leading-8">
+            Upload secure email files or
+            paste suspicious email content.
+          </p>
+        </div>
+
+        <div className="grid lg:grid-cols-2 gap-7 mt-14">
+          
+          {/* Input */}
+          <div className="bg-[#07101f]/90 border border-cyan-500/10 rounded-[30px] p-6">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-semibold">
+                Input Terminal
+              </h2>
+
+              <label className="px-5 py-3 rounded-xl border border-cyan-500/20 bg-cyan-500/10 cursor-pointer hover:bg-cyan-500/20">
+                Upload File
+
+                <input
+                  type="file"
+                  accept=".txt,.eml"
+                  className="hidden"
+                  onChange={
+                    handleEmailFileChange
+                  }
+                />
+              </label>
+            </div>
+
+            <textarea
+              value={emailText}
+              onChange={(e) =>
+                setEmailText(
+                  e.target.value
+                )
+              }
+              placeholder="Paste suspicious email content..."
+              className="w-full h-[260px] rounded-3xl bg-[#020817] border border-cyan-500/10 p-5 outline-none resize-none text-gray-300"
+            />
+
+            <button
+              onClick={handleAnalyze}
+              className="w-full mt-6 py-4 rounded-2xl bg-cyan-500 text-black font-semibold hover:bg-cyan-400"
+            >
+              Analyze Email
+            </button>
+          </div>
+
+          {/* Terminal */}
+          <div className="bg-black border border-cyan-500/20 rounded-[30px] p-6 font-mono">
+            <h2 className="text-cyan-300 text-xl mb-4">
+              SYSTEM_TERMINAL
+            </h2>
+
+            <div
+              ref={terminalRef}
+              className="h-[320px] overflow-y-auto space-y-2 text-sm"
+            >
+              {!isAnalyzing &&
+                logs.length === 0 && (
+                  <p className="text-gray-500">
+                    waiting_for_input...
+                  </p>
+                )}
+
+              {logs.map((log, index) => (
+                <p
+                  key={index}
+                  className="text-green-400"
+                >
+                  {log}
+                </p>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* RESULT PANEL */}
+        {showResult && result && (
+          <div className="mt-10 bg-[#07101f]/90 rounded-[35px] p-8 border border-cyan-500/10">
+
+            <h2 className="text-4xl font-bold mb-8">
+              Threat Intelligence Report
+            </h2>
+
+            <div className="grid md:grid-cols-3 gap-5">
+
+              <div className="bg-[#020817] rounded-[25px] p-6 border border-cyan-500/10">
+                <p className="text-gray-400">
+                  Threat Status
+                </p>
+
+                <h3 className="text-2xl font-semibold mt-3">
+                  {result.phishing_detected === 1
+                    ? "Phishing Detected"
+                    : "Safe Email"}
+                </h3>
+              </div>
+
+              <div className="bg-[#020817] rounded-[25px] p-6 border border-cyan-500/10">
+                <p className="text-gray-400">
+                  Phishing Type
+                </p>
+
+                <h3 className="text-2xl font-semibold mt-3 text-cyan-300">
+                  {result.phishing_type}
+                </h3>
+              </div>
+
+              <div className="bg-[#020817] rounded-[25px] p-6 border border-cyan-500/10">
+                <p className="text-gray-400">
+                  Severity
+                </p>
+
+                <h3 className="text-2xl font-semibold mt-3 text-red-400">
+                  {result.severity}
+                </h3>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default EmailAnalysis;
