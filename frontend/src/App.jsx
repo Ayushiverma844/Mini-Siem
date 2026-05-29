@@ -3,9 +3,11 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Dashboard from "./pages/Dashboard";
 import EmailAnalysis from "./pages/EmailAnalysis";
 import LogAnalysis from "./pages/LogAnalysis";
+// import ThreatProvider from "./context/ThreatContext";
 
 function App() {
   return (
+    
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Dashboard />} />

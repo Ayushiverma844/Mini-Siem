@@ -1,8 +1,15 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef,  useContext } from "react";
+import {
+  ThreatContext,
+} from "../context/ThreatContext";
 import NavigationBar from "../components/NavigationBar";
 import axios from "axios";
 
 const LogAnalysis = () => {
+  const { addScan } =
+    useContext(
+      ThreatContext
+    );
   const [selectedFile, setSelectedFile] =
     useState(null);
 
@@ -11,7 +18,9 @@ const LogAnalysis = () => {
 
   const [showResult, setShowResult] =
     useState(false);
-
+  const [predictionResult,
+  setPredictionResult] =
+  useState(null);
   const [logs, setLogs] = useState([]);
 
   const [result, setResult] =
@@ -117,87 +126,130 @@ const LogAnalysis = () => {
   };
 
   // Analyze Logs
-  const handleAnalyze = async () => {
-    setIsAnalyzing(true);
-    setShowResult(false);
-    setLogs([]);
-    setResult(null);
+  const handleAnalyze =
+  async () => {
 
-    // Terminal animation
-    terminalMessages.forEach(
-      (message, index) => {
-        setTimeout(() => {
-          setLogs((prev) => [
-            ...prev,
-            message,
-          ]);
-        }, index * 700);
-      }
+  if (!selectedFile) {
+    alert(
+      "Please upload log file"
     );
+    return;
+  }
 
-    try {
-      const response =
-        await axios.post(
-          "http://127.0.0.1:5000/predict-log",
-          {
-            network_packet_size:
-              Number(
-                formData.network_packet_size
-              ),
+  setIsAnalyzing(true);
+  setShowResult(false);
 
-            protocol_type:
-              formData.protocol_type,
+  try {
+    // Read file text
+    const fileContent =
+      await selectedFile.text();
 
-            login_attempts:
-              Number(
-                formData.login_attempts
-              ),
+    /*
+      Expected CSV format:
+      network_packet_size,
+      protocol_type,
+      login_attempts,
+      session_duration,
+      encryption_used,
+      ip_reputation_score,
+      failed_logins,
+      browser_type,
+      unusual_time_access
+    */
 
-            session_duration:
-              Number(
-                formData.session_duration
-              ),
+    const lines =
+      fileContent
+        .trim()
+        .split("\n");
 
-            encryption_used:
-              formData.encryption_used,
+    const values =
+      lines[1]
+        .split(",");
 
-            ip_reputation_score:
-              Number(
-                formData.ip_reputation_score
-              ),
+    const payload = {
+      network_packet_size:
+        Number(values[0]),
 
-            failed_logins:
-              Number(
-                formData.failed_logins
-              ),
+      protocol_type:
+        values[1],
 
-            browser_type:
-              formData.browser_type,
+      login_attempts:
+        Number(values[2]),
 
-            unusual_time_access:
-              Number(
-                formData.unusual_time_access
-              ),
-          }
-        );
+      session_duration:
+        Number(values[3]),
 
-      setResult(response.data);
+      encryption_used:
+        values[4],
 
-      setTimeout(() => {
-        setIsAnalyzing(false);
-        setShowResult(true);
-      }, 4500);
+      ip_reputation_score:
+        Number(values[5]),
 
-    } catch (error) {
-      console.error(error);
+      failed_logins:
+        Number(values[6]),
 
-      alert(
-        "Backend connection failed"
+      browser_type:
+        values[7],
+
+      unusual_time_access:
+        Number(values[8]),
+    };
+
+    // Backend API call
+    const response =
+      await fetch(
+        "http://127.0.0.1:5000/predict-log",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify(
+            payload
+          ),
+        }
       );
 
-      setIsAnalyzing(false);
-    }
-  };
+    const result =
+      await response.json();
+
+    setPredictionResult(
+      result
+    );
+
+    // =====================
+    // Dashboard Update
+    // =====================
+
+    addScan({
+      file:
+        selectedFile.name,
+
+      status:
+        result.attack_detected ===
+        1
+          ? "Attack Detected"
+          : "Safe",
+
+      risk:
+        result.attack_detected ===
+        1
+          ? "Critical"
+          : "Low",
+    });
+
+    setShowResult(true);
+  } catch (error) {
+    console.error(error);
+
+    alert(
+      "Backend connection failed"
+    );
+  } finally {
+    setIsAnalyzing(false);
+  }
+};
 
   // Auto Scroll Terminal
   useEffect(() => {
@@ -437,35 +489,63 @@ const LogAnalysis = () => {
         </div>
 
         {/* RESULT PANEL */}
-        {showResult && result && (
-          <div className="mt-10 bg-[#07101f]/90 rounded-[35px] p-8 border border-cyan-500/10">
+        {showResult &&
+  predictionResult && (
+    <div className="mt-10 bg-[#07101f]/90 rounded-[35px] p-8 border border-cyan-500/10">
 
-            <h2 className="text-4xl font-bold mb-8">
-              Security Threat Report
-            </h2>
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="text-3xl font-bold">
+          Security Analysis
+          Result
+        </h2>
 
-            <div className="bg-[#020817] rounded-[25px] p-8 border border-cyan-500/10 text-center">
+        <div
+          className={`px-5 py-2 rounded-full border ${
+            predictionResult.attack_detected ===
+            1
+              ? "bg-red-500/10 border-red-500/20 text-red-300"
+              : "bg-green-500/10 border-green-500/20 text-green-300"
+          }`}
+        >
+          {predictionResult.attack_detected ===
+          1
+            ? "Threat Detected"
+            : "System Safe"}
+        </div>
+      </div>
 
-              <h3
-                className={`text-4xl font-bold ${
-                  result.attack_detected === 1
-                    ? "text-red-400"
-                    : "text-green-400"
-                }`}
-              >
-                {result.attack_detected ===
-                1
-                  ? "⚠ Attack Detected"
-                  : "✅ No Threat Found"}
-              </h3>
+      <div className="grid md:grid-cols-2 gap-5">
 
-              <p className="text-gray-400 mt-4">
-                ML-based security log
-                classification completed.
-              </p>
-            </div>
-          </div>
-        )}
+        {/* Detection */}
+        <div className="bg-[#020817] rounded-[25px] p-6 border border-cyan-500/10">
+          <p className="text-gray-400 text-sm">
+            Attack Status
+          </p>
+
+          <h3 className="text-2xl font-semibold mt-3">
+            {predictionResult.attack_detected ===
+            1
+              ? "Attack Detected"
+              : "Safe"}
+          </h3>
+        </div>
+
+        {/* Severity */}
+        <div className="bg-[#020817] rounded-[25px] p-6 border border-cyan-500/10">
+          <p className="text-gray-400 text-sm">
+            Risk Level
+          </p>
+
+          <h3 className="text-2xl font-semibold mt-3 text-cyan-300">
+            {predictionResult.attack_detected ===
+            1
+              ? "Critical"
+              : "Low"}
+          </h3>
+        </div>
+      </div>
+    </div>
+)}
       </div>
     </div>
   );

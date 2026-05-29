@@ -1,12 +1,23 @@
-import { useState, useEffect, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useContext,
+} from "react";
+
+import {
+  ThreatContext,
+} from "../context/ThreatContext";
 import NavigationBar from "../components/NavigationBar";
 import axios from "axios";
 
 const EmailAnalysis = () => {
+  const { addScan } = useContext(ThreatContext);
   const [emailText, setEmailText] = useState("");
   const [emailFile, setEmailFile] = useState(null);
 
   const [showResult, setShowResult] = useState(false);
+  const [predictionResult,setPredictionResult] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const [logs, setLogs] = useState([]);
@@ -74,56 +85,86 @@ const EmailAnalysis = () => {
   };
 
   // Analyze
-  const handleAnalyze = async () => {
-    if (!emailText.trim()) {
-      alert(
-        "Please enter email content or upload file"
-      );
-      return;
+  const handleAnalyze =
+  async () => {
+
+  if (
+    !emailText.trim() &&
+    !emailFile
+  ) {
+    alert(
+      "Please enter email content or upload file"
+    );
+    return;
+  }
+
+  setIsAnalyzing(true);
+  setShowResult(false);
+
+  try {
+    let finalText = emailText;
+
+    // Read uploaded file
+    if (emailFile) {
+      finalText =
+        await emailFile.text();
     }
 
-    setIsAnalyzing(true);
-    setShowResult(false);
-    setLogs([]);
-    setResult(null);
-
-    // fake terminal logs
-    for (let i = 0; i < terminalMessages.length; i++) {
-      setTimeout(() => {
-        setLogs((prev) => [
-          ...prev,
-          terminalMessages[i]
-        ]);
-      }, i * 700);
-    }
-
-    try {
-      // API CALL TO FLASK
-      const response = await axios.post(
+    // API call
+    const response =
+      await fetch(
         "http://127.0.0.1:5000/predict-phishing",
         {
-          email_text: emailText,
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+          body: JSON.stringify({
+            email_text:
+              finalText,
+          }),
         }
       );
 
-      // save ML output
-      setResult(response.data);
+    const result =
+      await response.json();
 
-      setTimeout(() => {
-        setIsAnalyzing(false);
-        setShowResult(true);
-      }, 4200);
-    } catch (error) {
-      console.error(error);
+    setPredictionResult(
+      result
+    );
 
-      alert(
-        "Backend connection failed"
-      );
+    // =====================
+    // Dashboard Update
+    // =====================
 
-      setIsAnalyzing(false);
-    }
-  };
+    addScan({
+      file:
+        emailFile?.name ||
+        "email_text",
 
+      status:
+        result
+          .phishing_detected ===
+        1
+          ? "Phishing"
+          : "Safe",
+
+      risk:
+        result.severity,
+    });
+
+    setShowResult(true);
+  } catch (error) {
+    console.error(error);
+
+    alert(
+      "Backend connection failed"
+    );
+  } finally {
+    setIsAnalyzing(false);
+  }
+};
   // auto scroll terminal
   useEffect(() => {
     if (terminalRef.current) {
@@ -229,49 +270,75 @@ const EmailAnalysis = () => {
         </div>
 
         {/* RESULT PANEL */}
-        {showResult && result && (
-          <div className="mt-10 bg-[#07101f]/90 rounded-[35px] p-8 border border-cyan-500/10">
+       {showResult &&
+  predictionResult && (
+    <div className="mt-10 bg-[#07101f]/90 rounded-[35px] p-8 border border-cyan-500/10">
 
-            <h2 className="text-4xl font-bold mb-8">
-              Threat Intelligence Report
-            </h2>
+      <div className="flex items-center justify-between mb-8">
+        <h2 className="text-3xl font-bold">
+          Threat Intelligence
+          Result
+        </h2>
 
-            <div className="grid md:grid-cols-3 gap-5">
+        <div
+          className={`px-5 py-2 rounded-full border ${
+            predictionResult.phishing_detected ===
+            1
+              ? "bg-red-500/10 border-red-500/20 text-red-300"
+              : "bg-green-500/10 border-green-500/20 text-green-300"
+          }`}
+        >
+          {predictionResult.phishing_detected ===
+          1
+            ? "Threat Detected"
+            : "Safe Email"}
+        </div>
+      </div>
 
-              <div className="bg-[#020817] rounded-[25px] p-6 border border-cyan-500/10">
-                <p className="text-gray-400">
-                  Threat Status
-                </p>
+      <div className="grid md:grid-cols-3 gap-5">
 
-                <h3 className="text-2xl font-semibold mt-3">
-                  {result.phishing_detected === 1
-                    ? "Phishing Detected"
-                    : "Safe Email"}
-                </h3>
-              </div>
+        {/* Detection */}
+        <div className="bg-[#020817] rounded-[25px] p-6 border border-cyan-500/10">
+          <p className="text-gray-400 text-sm">
+            Detection Status
+          </p>
 
-              <div className="bg-[#020817] rounded-[25px] p-6 border border-cyan-500/10">
-                <p className="text-gray-400">
-                  Phishing Type
-                </p>
+          <h3 className="text-2xl font-semibold mt-3">
+            {predictionResult.phishing_detected ===
+            1
+              ? "Phishing"
+              : "Safe"}
+          </h3>
+        </div>
 
-                <h3 className="text-2xl font-semibold mt-3 text-cyan-300">
-                  {result.phishing_type}
-                </h3>
-              </div>
+        {/* Type */}
+        <div className="bg-[#020817] rounded-[25px] p-6 border border-cyan-500/10">
+          <p className="text-gray-400 text-sm">
+            Threat Type
+          </p>
 
-              <div className="bg-[#020817] rounded-[25px] p-6 border border-cyan-500/10">
-                <p className="text-gray-400">
-                  Severity
-                </p>
+          <h3 className="text-2xl font-semibold mt-3">
+            {
+              predictionResult.phishing_type
+            }
+          </h3>
+        </div>
 
-                <h3 className="text-2xl font-semibold mt-3 text-red-400">
-                  {result.severity}
-                </h3>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Severity */}
+        <div className="bg-[#020817] rounded-[25px] p-6 border border-cyan-500/10">
+          <p className="text-gray-400 text-sm">
+            Risk Severity
+          </p>
+
+          <h3 className="text-2xl font-semibold mt-3 text-cyan-300">
+            {
+              predictionResult.severity
+            }
+          </h3>
+        </div>
+      </div>
+    </div>
+)}
       </div>
     </div>
   );
