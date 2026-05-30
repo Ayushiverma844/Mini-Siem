@@ -22,6 +22,7 @@ const EmailAnalysis = () => {
 
   const [logs, setLogs] = useState([]);
   const terminalRef = useRef(null);
+  const resultRef = useRef(null);
 
   // prediction result from ML model
   const [result, setResult] = useState(null);
@@ -203,6 +204,28 @@ const handleAnalyze = async () => {
         terminalRef.current.scrollHeight;
     }
   }, [logs]);
+  // =====================
+// AUTO SCROLL TO RESULT
+// =====================
+useEffect(() => {
+
+  if (
+    showResult &&
+    resultRef.current
+  ) {
+
+    setTimeout(() => {
+
+      resultRef.current
+        .scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+
+    }, 300);
+  }
+
+}, [showResult]);
 
   return (
     <div className="min-h-screen bg-[#020817] text-white relative overflow-hidden">
@@ -309,7 +332,7 @@ const handleAnalyze = async () => {
         {/* RESULT PANEL */}
        {showResult &&
   predictionResult && (
-    <div className="mt-10 bg-[#07101f]/90 rounded-[35px] p-8 border border-cyan-500/10">
+    <div  ref={resultRef} className="mt-10 bg-[#07101f]/90 rounded-[35px] p-8 border border-cyan-500/10">
 
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-3xl font-bold">
@@ -374,6 +397,31 @@ const handleAnalyze = async () => {
           </h3>
         </div>
       </div>
+      {/*  SECURITY SUGGESTION */}
+<div className="mt-7 bg-[#020817] rounded-[28px] border border-cyan-500/10 p-6">
+
+  <div className="flex items-center gap-3 mb-3">
+    <div className="w-11 h-11 rounded-2xl bg-cyan-500/10 flex items-center justify-center text-xl">
+      🤖
+    </div>
+
+    <div>
+      <h3 className="text-lg font-semibold text-cyan-300">
+        Security Recommendation
+      </h3>
+
+     
+    </div>
+  </div>
+
+  <p className="text-gray-300 leading-7 text-sm">
+
+    {predictionResult.phishing_detected === 1
+      ? `Potential phishing activity detected (${predictionResult.phishing_type}). Avoid clicking links, downloading attachments, or sharing credentials. Verify sender identity and report suspicious emails immediately.`
+      : `No phishing indicators detected. Email appears safe, but always verify suspicious links and sender authenticity before interacting.`}
+
+  </p>
+</div>
     </div>
 )}
       </div>

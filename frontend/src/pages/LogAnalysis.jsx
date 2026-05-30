@@ -19,6 +19,7 @@ const LogAnalysis = () => {
   const [logs, setLogs] = useState([]);
 
   const terminalRef = useRef(null);
+  const resultRef = useRef(null);
 
   // =====================
   // TERMINAL STEPS
@@ -260,6 +261,31 @@ const handleAnalyze = async () => {
         terminalRef.current.scrollHeight;
     }
   }, [logs]);
+  // =====================
+// AUTO SCROLL TO RESULT
+// =====================
+useEffect(() => {
+
+  if (
+    showResult &&
+    resultRef.current
+  ) {
+
+    setTimeout(() => {
+
+      resultRef.current
+        .scrollIntoView({
+          behavior:
+            "smooth",
+
+          block:
+            "start",
+        });
+
+    }, 300);
+  }
+
+}, [showResult]);
 
   return (
     <div className="min-h-screen bg-[#020817] text-white relative overflow-hidden">
@@ -455,7 +481,8 @@ const handleAnalyze = async () => {
 
         {/* RESULT */}
         {showResult && predictionResult && (
-          <div className="mt-10 bg-[#07101f]/90 rounded-[35px] p-8 border border-cyan-500/10">
+          <div   ref={resultRef}
+className="mt-10 bg-[#07101f]/90 rounded-[35px] p-8 border border-cyan-500/10">
 
             <div className="flex justify-between mb-8">
               <h2 className="text-3xl font-bold">
@@ -504,11 +531,58 @@ const handleAnalyze = async () => {
 </div>
 
             </div>
+            {/* Security Recommendation */}
+<div className="mt-8 bg-[#020817] border border-cyan-500/10 rounded-[30px] p-6">
+
+  <div className="flex items-center gap-4 mb-5">
+
+    <div className="
+      w-14 h-14
+      rounded-2xl
+      bg-cyan-500/10
+      border border-cyan-500/20
+      flex items-center justify-center
+      text-2xl
+    ">
+      🤖
+    </div>
+
+    <div>
+      <h3 className="text-lg font-semibold text-cyan-300">
+       Security Recommendation
+      </h3>
+
+    </div>
+  </div>
+
+  <p className="text-gray-300 leading-8">
+
+    {predictionResult.severity ===
+    "Critical"
+      ? "Critical threat activity detected. Immediately isolate suspicious systems, block malicious traffic, rotate credentials, and investigate unauthorized access attempts."
+
+      : predictionResult.severity ===
+        "High"
+      ? "High-risk behavior identified. Review authentication attempts, monitor network activity, and strengthen endpoint monitoring."
+
+      : predictionResult.severity ===
+        "Medium"
+      ? "Potentially suspicious activity found. Continue monitoring and verify unusual login or access behavior."
+
+      : "No major threat indicators detected. Continue monitoring and maintain updated security policies."}
+
+  </p>
+</div>
           </div>
+          
         )}
+
+        
 
       </div>
     </div>
+    
+    
   );
 };
 
