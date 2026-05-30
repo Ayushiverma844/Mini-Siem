@@ -2,7 +2,14 @@
 
 import { useNavigate, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
-import { useState } from "react";
+import {
+  useState,
+  useContext,
+} from "react";
+
+import {
+  ThreatContext,
+} from "../context/ThreatContext";
 
 const NavigationBar = () => {
   const navigate = useNavigate();
@@ -10,6 +17,11 @@ const NavigationBar = () => {
 
   const [mobileMenu, setMobileMenu] =
     useState(false);
+    const {
+  resetDashboard,
+} = useContext(
+  ThreatContext
+);
 
   const navigationItems = [
     {
@@ -85,19 +97,24 @@ const NavigationBar = () => {
             )}
           </div>
 
-          {/* System Status */}
-          <div className="hidden md:flex px-5 py-3 rounded-full bg-green-500/10 border border-green-500/20 items-center gap-3">
+          {/* Reset Dashboard Button */}
+          <button
+  onClick={() => {
+    const confirmReset =
+      window.confirm(
+        "Reset entire dashboard?"
+      );
 
-            <div className="relative">
-              <div className="w-2 h-2 rounded-full bg-green-400"></div>
-
-              <div className="absolute inset-0 w-2 h-2 rounded-full bg-green-400 animate-ping"></div>
-            </div>
-
-            <span className="text-green-300 text-sm">
-              System Healthy
-            </span>
-          </div>
+    if (confirmReset) {
+      resetDashboard();
+    }
+  }}
+  className="hidden md:flex px-5 py-3 rounded-full bg-red-500/10 border border-red-500/20 items-center gap-3 hover:bg-red-500/20 transition"
+>
+  <span className="text-red-300 text-sm font-medium">
+    Reset Dashboard
+  </span>
+</button>
 
           {/* Mobile Menu Button */}
           <button

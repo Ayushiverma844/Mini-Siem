@@ -85,8 +85,7 @@ const EmailAnalysis = () => {
   };
 
   // Analyze
-  const handleAnalyze =
-  async () => {
+const handleAnalyze = async () => {
 
   if (
     !emailText.trim() &&
@@ -100,42 +99,67 @@ const EmailAnalysis = () => {
 
   setIsAnalyzing(true);
   setShowResult(false);
+  setLogs([]);
 
   try {
+
+    // =====================
+    // TERMINAL ANIMATION
+    // =====================
+
+    for (
+      let i = 0;
+      i < terminalMessages.length;
+      i++
+    ) {
+
+      await new Promise(
+        (resolve) =>
+          setTimeout(resolve, 700)
+      );
+
+      setLogs((prev) => [
+        ...prev,
+        terminalMessages[i],
+      ]);
+    }
+
     let finalText = emailText;
 
-    // Read uploaded file
+    // uploaded file read
     if (emailFile) {
       finalText =
         await emailFile.text();
     }
 
-    // API call
+    // =====================
+    // ML BACKEND CALL
+    // =====================
+
     const response =
-      await fetch(
+      await axios.post(
         "http://127.0.0.1:5000/predict-phishing",
         {
-          method: "POST",
-          headers: {
-            "Content-Type":
-              "application/json",
-          },
-          body: JSON.stringify({
-            email_text:
-              finalText,
-          }),
+          email_text:
+            finalText,
         }
       );
 
     const result =
-      await response.json();
+      response.data;
 
     setPredictionResult(
       result
     );
 
+    // terminal success log
+    setLogs((prev) => [
+      ...prev,
+      `[SUCCESS] Threat analysis completed`,
+    ]);
+
     // =====================
-    // Dashboard Update
+    // DASHBOARD UPDATE
     // =====================
 
     addScan({
@@ -144,8 +168,7 @@ const EmailAnalysis = () => {
         "email_text",
 
       status:
-        result
-          .phishing_detected ===
+        result.phishing_detected ===
         1
           ? "Phishing"
           : "Safe",
@@ -155,12 +178,20 @@ const EmailAnalysis = () => {
     });
 
     setShowResult(true);
+
   } catch (error) {
+
     console.error(error);
+
+    setLogs((prev) => [
+      ...prev,
+      `[ERROR] Backend connection failed`,
+    ]);
 
     alert(
       "Backend connection failed"
     );
+
   } finally {
     setIsAnalyzing(false);
   }
@@ -259,11 +290,17 @@ const EmailAnalysis = () => {
 
               {logs.map((log, index) => (
                 <p
-                  key={index}
-                  className="text-green-400"
-                >
-                  {log}
-                </p>
+  key={index}
+  className={`${
+    log.includes("[ERROR]")
+      ? "text-red-400"
+      : log.includes("[SUCCESS]")
+      ? "text-cyan-300"
+      : "text-green-400"
+  }`}
+>
+  {log}
+</p>
               ))}
             </div>
           </div>
