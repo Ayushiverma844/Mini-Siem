@@ -11,7 +11,8 @@ import axios from "axios";
 
 const LogAnalysis = () => {
   const { addScan } = useContext(ThreatContext);
-
+const [scanTime, setScanTime] =
+  useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [showResult, setShowResult] = useState(false);
@@ -20,6 +21,7 @@ const LogAnalysis = () => {
 
   const terminalRef = useRef(null);
   const resultRef = useRef(null);
+  
 
   // =====================
   // TERMINAL STEPS
@@ -193,7 +195,24 @@ const handleAnalyze = async () => {
           confidence
         ),
     };
+    const now = new Date();
 
+const formattedTime =
+  now.toLocaleDateString(
+    "en-GB"
+  ) +
+  " | " +
+  now.toLocaleTimeString(
+    "en-US",
+    {
+      hour: "2-digit",
+      minute: "2-digit",
+    }
+  );
+
+setScanTime(
+  formattedTime
+);
     setPredictionResult(
       result
     );
@@ -488,8 +507,17 @@ className="mt-10 bg-[#07101f]/90 rounded-[35px] p-8 border border-cyan-500/10">
               <h2 className="text-3xl font-bold">
                 Security Analysis Result
               </h2>
+              <div className="mb-2">
+  <p className="text-sm text-gray-400">
+    Scan Time
+  </p>
 
-              <div className={`px-5 py-2 rounded-full border ${
+  <h3 className="text-cyan-300 text-xs mt-1">
+    {scanTime}
+  </h3>
+</div>
+
+              <div className={`px-5 py-2 flex justify-center items-center rounded-full border ${
                 predictionResult.attack_detected === 1
                   ? "bg-red-500/10 border-red-500/20 text-red-300"
                   : "bg-green-500/10 border-green-500/20 text-green-300"

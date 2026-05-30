@@ -13,6 +13,8 @@ import axios from "axios";
 
 const EmailAnalysis = () => {
   const { addScan } = useContext(ThreatContext);
+  const [scanTime, setScanTime] =
+  useState("");
   const [emailText, setEmailText] = useState("");
   const [emailFile, setEmailFile] = useState(null);
 
@@ -148,7 +150,24 @@ const handleAnalyze = async () => {
 
     const result =
       response.data;
+    const now = new Date();
 
+const formattedTime =
+  now.toLocaleDateString(
+    "en-GB"
+  ) +
+  " | " +
+  now.toLocaleTimeString(
+    "en-US",
+    {
+      hour: "2-digit",
+      minute: "2-digit",
+    }
+  );
+
+setScanTime(
+  formattedTime
+);
     setPredictionResult(
       result
     );
@@ -339,6 +358,16 @@ useEffect(() => {
           Threat Intelligence
           Result
         </h2>
+
+           <div className="mb-2">
+  <p className="text-sm text-gray-400">
+    Scan Time
+  </p>
+
+  <h3 className="text-cyan-300 text-xs mt-1">
+    {scanTime}
+  </h3>
+</div>
 
         <div
           className={`px-5 py-2 rounded-full border ${
