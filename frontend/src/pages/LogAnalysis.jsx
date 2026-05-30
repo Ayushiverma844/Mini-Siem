@@ -73,92 +73,183 @@ const LogAnalysis = () => {
   // =====================
   // ANALYZE LOG FILE
   // =====================
-  const handleAnalyze = async () => {
-    if (!selectedFile) {
-      alert("Please upload log file");
-      return;
-    }
+const handleAnalyze = async () => {
+  if (!selectedFile) {
+    alert("Please upload log file");
+    return;
+  }
 
-    setIsAnalyzing(true);
-    setShowResult(false);
-    setLogs([]);
-    setPredictionResult(null);
+  setIsAnalyzing(true);
+  setShowResult(false);
+  setLogs([]);
+  setPredictionResult(null);
 
-    try {
-      // =====================
-      // TERMINAL ANIMATION
-      // =====================
-      for (let i = 0; i < terminalMessages.length; i++) {
-        await new Promise((r) => setTimeout(r, 700));
+  try {
 
-        setLogs((prev) => [...prev, terminalMessages[i]]);
-      }
+    // =====================
+    // TERMINAL ANIMATION
+    // =====================
+    for (
+      let i = 0;
+      i < terminalMessages.length;
+      i++
+    ) {
 
-      // =====================
-      // READ FILE (CSV)
-      // =====================
-      const fileContent = await selectedFile.text();
-      const lines = fileContent.trim().split("\n");
-      const values = lines[1].split(",");
-
-      const payload = {
-        network_packet_size: Number(values[0]),
-        protocol_type: values[1],
-        login_attempts: Number(values[2]),
-        session_duration: Number(values[3]),
-        encryption_used: values[4],
-        ip_reputation_score: Number(values[5]),
-        failed_logins: Number(values[6]),
-        browser_type: values[7],
-        unusual_time_access: Number(values[8]),
-      };
-
-      // =====================
-      // ML BACKEND CALL
-      // =====================
-      const response = await axios.post(
-        "http://127.0.0.1:5000/predict-log",
-        payload
+      await new Promise(
+        (resolve) =>
+          setTimeout(
+            resolve,
+            700
+          )
       );
 
-      const result = response.data;
-      setPredictionResult(result);
+      setLogs(
+        (prev) => [
+          ...prev,
+          terminalMessages[i],
+        ]
+      );
+    }
 
-      // success log
-      setLogs((prev) => [
+    // =====================
+    // SEND FILE TO BACKEND
+    // =====================
+
+    const formData =
+      new FormData();
+
+    formData.append(
+      "file",
+      selectedFile
+    );
+
+    const response =
+      await fetch(
+        "http://127.0.0.1:5000/upload-log-file",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+    const data =
+      await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error ||
+        "Server Error"
+      );
+    }
+
+    console.log(data);
+
+    // =====================
+    // CREATE RESULT FORMAT
+    // =====================
+
+    const threatDetected =
+      data.threats_detected > 0
+        ? 1
+        : 0;
+
+    let severity =
+      "Low";
+
+    if (
+      data.threats_detected >=
+      5
+    ) {
+      severity =
+        "Critical";
+    } else if (
+      data.threats_detected >=
+      3
+    ) {
+      severity =
+        "High";
+    } else if (
+      data.threats_detected >=
+      1
+    ) {
+      severity =
+        "Medium";
+    }
+
+    const confidence =
+      (
+        data.threats_detected /
+        data.total_logs
+      ).toFixed(2);
+
+    const result = {
+      attack_detected:
+        threatDetected,
+      severity:
+        severity,
+      confidence:
+        Number(
+          confidence
+        ),
+    };
+
+    setPredictionResult(
+      result
+    );
+
+    setLogs(
+      (prev) => [
         ...prev,
         "[SUCCESS] Threat analysis completed",
-      ]);
+      ]
+    );
 
-      // =====================
-      // DASHBOARD UPDATE
-      // =====================
-      addScan({
-        file: selectedFile.name,
-        status:
-          result.attack_detected === 1
-            ? "Attack Detected"
-            : "Safe",
-        risk:
-          result.attack_detected === 1
-            ? "Critical"
-            : "Low",
-      });
+    // =====================
+    // DASHBOARD UPDATE
+    // =====================
 
-      setShowResult(true);
-    } catch (error) {
-      console.error(error);
+    addScan({
+      file:
+        selectedFile.name,
 
-      setLogs((prev) => [
+      status:
+        threatDetected ===
+        1
+          ? "Attack Detected"
+          : "Safe",
+
+      risk:
+        severity,
+    });
+
+    setShowResult(
+      true
+    );
+
+  } catch (error) {
+
+    console.error(
+      error
+    );
+
+    setLogs(
+      (prev) => [
         ...prev,
-        "[ERROR] Backend connection failed",
-      ]);
+        `[ERROR] ${error.message}`,
+      ]
+    );
 
-      alert("Backend connection failed");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
+    alert(
+      error.message
+    );
+
+  } finally {
+
+    setIsAnalyzing(
+      false
+    );
+  }
+};
 
   // =====================
   // AUTO SCROLL TERMINAL
@@ -202,36 +293,129 @@ const LogAnalysis = () => {
 
           {/* LEFT */}
           <div className="bg-[#07101f]/90 rounded-[30px] p-6 border border-cyan-500/10">
+            <h2 className="text-2xl font-semibold mb-8">
+  Upload Log Evidence
+</h2>
 
-            <h2 className="text-2xl font-semibold mb-6">
-              Upload Log Evidence
-            </h2>
+<div className="relative">
 
-            <label className="px-5 py-3 rounded-xl border border-cyan-500/20 bg-cyan-500/10 cursor-pointer">
-              Upload File
-              <input
-                type="file"
-                accept=".txt,.csv,.log"
-                className="hidden"
-                onChange={handleFileChange}
-              />
-            </label>
+  {/* Upload Box */}
+  <label
+    className="
+    w-full min-h-[300px]
+    rounded-[32px]
+    border-2 border-dashed
+    border-cyan-500/20
+    bg-[#020817]
+    hover:border-cyan-400/40
+    hover:bg-cyan-500/5
+    transition-all duration-300
+    cursor-pointer
+    flex flex-col
+    items-center
+    justify-center
+    px-10 py-12
+    text-center
+    group
+  "
+  >
+    <input
+      type="file"
+      accept=".txt,.csv,.log"
+      className="hidden"
+      onChange={handleFileChange}
+    />
 
-            {selectedFile && (
-              <p className="mt-3 text-cyan-300">
-                ACTIVE_FILE:
-                <span className="text-white ml-2">
-                  {selectedFile.name}
-                </span>
-              </p>
-            )}
+    {/* Icon */}
+    <div className="
+      w-24 h-24
+      rounded-[28px]
+      bg-cyan-500/10
+      border border-cyan-500/20
+      flex items-center justify-center
+      text-5xl
+      mb-8
+      group-hover:scale-110
+      transition duration-300
+    ">
+      📂
+    </div>
 
-            <button
-              onClick={handleAnalyze}
-              className="w-full mt-6 py-4 rounded-2xl bg-cyan-500 text-black font-semibold hover:bg-cyan-400"
-            >
-              Analyze Logs
-            </button>
+    {/* Heading */}
+    <h3 className="text-2xl font-semibold text-cyan-300 mb-4">
+      Upload Security Log File
+    </h3>
+
+    {/* Description */}
+    <p className="text-gray-400 text-base leading-8 max-w-md">
+      Click to upload your security logs
+      here for
+      intelligent SOC threat analysis
+    </p>
+
+ 
+
+    {/* Max Size */}
+    <p className="text-gray-500 text-sm mt-8">
+      Maximum file size: 10MB
+    </p>
+  </label>
+
+  {/* Selected File */}
+  {selectedFile && (
+    <div className="
+      mt-6
+      bg-cyan-500/10
+      border border-cyan-500/20
+      rounded-[24px]
+      p-5
+      flex items-center justify-between
+    ">
+
+      <div>
+        <p className="text-xs tracking-[3px] uppercase text-gray-400 mb-2">
+          Active File
+        </p>
+
+        <p className="text-cyan-300 text-lg break-all">
+          {selectedFile.name}
+        </p>
+      </div>
+
+      <div className="
+        w-16 h-16
+        rounded-2xl
+        bg-cyan-500/10
+        flex items-center justify-center
+        text-3xl
+      ">
+        📄
+      </div>
+    </div>
+  )}
+</div>
+
+<button
+  onClick={handleAnalyze}
+  disabled={isAnalyzing}
+  className="
+  w-full mt-7 py-5
+  rounded-[24px]
+  bg-cyan-500
+  text-black
+  text-lg
+  font-semibold
+  hover:bg-cyan-400
+  transition-all duration-300
+  disabled:opacity-50
+  disabled:cursor-not-allowed
+"
+>
+  {isAnalyzing
+    ? "Analyzing Security Logs..."
+    : "Analyze Logs"}
+</button>
+          
           </div>
 
           {/* RIGHT TERMINAL */}
@@ -289,7 +473,7 @@ const LogAnalysis = () => {
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-5">
+            <div className="grid md:grid-cols-3 gap-5">
 
               <div className="bg-[#020817] p-6 rounded-2xl border border-cyan-500/10">
                 <p className="text-gray-400 text-sm">Status</p>
@@ -303,11 +487,21 @@ const LogAnalysis = () => {
               <div className="bg-[#020817] p-6 rounded-2xl border border-cyan-500/10">
                 <p className="text-gray-400 text-sm">Risk Level</p>
                 <h3 className="text-2xl mt-3 text-cyan-300">
-                  {predictionResult.attack_detected === 1
-                    ? "Critical"
-                    : "Low"}
+                 {predictionResult.severity}
                 </h3>
               </div>
+              <div className="bg-[#020817] p-6 rounded-2xl border border-cyan-500/10">
+  <p className="text-gray-400 text-sm">
+    Confidence Score
+  </p>
+
+  <h3 className="text-2xl mt-3 text-cyan-300">
+    {Math.round(
+      predictionResult.confidence *
+      100
+    )}%
+  </h3>
+</div>
 
             </div>
           </div>
