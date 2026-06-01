@@ -7,7 +7,6 @@ from flask import (
 from flask_cors import CORS
 
 import joblib
-from matplotlib import lines
 import pandas as pd
 
 from werkzeug.utils import (
@@ -93,38 +92,6 @@ def allowed_file(
         in ALLOWED_EXTENSIONS
     )
 
-def looks_like_log_file(lines):
-
-    log_keywords = [
-        "ssh",
-        "tcp",
-        "udp",
-        "failed password",
-        "accepted password",
-        "invalid user",
-        "authentication",
-        "login",
-        "logout",
-        "root",
-        "port",
-        "connection",
-        "firewall",
-        "kernel",
-        "session"
-    ]
-
-    score = 0
-
-    for line in lines[:50]:
-
-        line_lower = line.lower()
-
-        for keyword in log_keywords:
-
-            if keyword in line_lower:
-                score += 1
-
-    return score >= 2
 
 def safe_encode(
     encoder,
@@ -294,16 +261,6 @@ def upload_log_file():
             file_text
             .splitlines()
         )
-        # ==================
-        # CONTENT VALIDATION
-        # ==================
-
-        if not looks_like_log_file(lines):
-
-            return jsonify({
-                "error":
-                "Uploaded file does not appear to be a valid log file."
-        }), 400
 
         rows = []
 
