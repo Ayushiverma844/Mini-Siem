@@ -65,9 +65,7 @@ const EmailAnalysis = () => {
       file.size <= 5 * 1024 * 1024;
 
     if (!isValidExtension || !isValidMime) {
-      alert(
-        "Only .txt and .eml files are allowed"
-      );
+      alert("The uploaded file format is not supported. Try Again.");
       e.target.value = "";
       return;
     }

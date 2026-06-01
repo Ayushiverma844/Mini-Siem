@@ -59,7 +59,7 @@ const [scanTime, setScanTime] =
     const isValidSize = file.size <= 10 * 1024 * 1024;
 
     if (!isValid) {
-      alert("Only .log, .txt, .csv files allowed");
+      alert("The uploaded file format is not supported. Try Again.");
       e.target.value = "";
       return;
     }
